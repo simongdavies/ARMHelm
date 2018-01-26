@@ -61,11 +61,11 @@
     ],
     "outputs": {
         "fqdn": {
-            "value": "[reference(resourceId('Microsoft.Network/publicIPAddresses',parameters('publicIpName')),variables('apiversion')).dnsSettings.fqdn]",
+            "value": "[reference(resourceId(parameters('resourcegroupName'),'Microsoft.Network/publicIPAddresses',parameters('publicIpName')),variables('apiversion')).dnsSettings.fqdn]",
             "type": "string"
         },
         "ipAddress": {
-            "value": "[reference(resourceId('Microsoft.Network/publicIPAddresses',parameters('publicIpName')),variables('apiversion')).ipAddress]",
+            "value": "[reference(resourceId(parameters('resourcegroupName'),'Microsoft.Network/publicIPAddresses',parameters('publicIpName')),variables('apiversion')).ipAddress]",
             "type": "string"
         }
     }
