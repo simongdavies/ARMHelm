@@ -1,0 +1,112 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().location]"
+        },
+        "clusterName": {
+            "type": "string"
+        },
+        "adminUser": {
+            "type": "string"
+        },
+        "publicKey": {
+            "type": "string"
+        },
+        "clientId": {
+            "type": "string"
+        },
+        "secret": {
+            "type": "string"
+        },
+        "nodeCount": {
+            "type": "int"
+        },
+        "kubernetesVersion": {
+            "type": "string",
+            "allowedValues": [
+                "1.7.12",
+                "1.8.1",
+                "1.7.9",
+                "1.8.2",
+                "1.8.6"
+            ]
+        }
+    },
+    "variables": {
+        "commands": [
+            "[concat('az login --service-principal -u ',parameters('clientid') , ' -p ', parameters('secret'), ' --tenant ', subscription().tenantId,';')]",
+            "az aks install-cli;",
+            "[concat('az aks get-credentials --resource-group  ',resourceGroup().name , ' --name ', parameters('clusterName'),';')]",
+            "kubectl get nodes;",
+            "apk update;",
+            "apk add curl;",
+            "curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get > get_helm.sh;",
+            "chmod 700 get_helm.sh;",
+            "./get_helm.sh;",
+            "helm init --upgrade;"
+
+        ],
+        "templateLink": "[uri(deployment().properties.templateLink.uri, 'publicIPAddress.json')]"
+    },
+    "resources": [
+        {
+            "name": "CreatingPublicIp",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2017-05-10",
+            "resourceGroup": "[concat('MC_',resourceGroup().name,'_',parameters('clusterName'),'_',replace(parameters('location'),' ', ''))]",
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "[variables('templateLink')]",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "location": {
+                        "value": "[parameters('location')]"
+                    },
+                    "publicDnsName": {
+                        "value": "[concat('ghost',uniquestring(deployment().Name))]"
+                    },
+                    "publicIpName": {
+                        "value": "[concat('kubernetes-',uniquestring(deployment().Name))]"
+                    }
+                }
+            }
+        },
+        {
+            "location": "[parameters('location')]",
+            "type": "Microsoft.ContainerInstance/containerGroups",
+            "name": "acitest",
+            "apiVersion": "2017-10-01-preview",
+            "dependsOn": [
+                "CreatingPublicIp"
+            ],
+            "properties": {
+                "containers": [
+                    {
+                        "name": "acitest",
+                        "properties": {
+                            "image": "microsoft/azure-cli",
+                            "command": [
+                                "bin/bash",
+                                "-c",
+                                "[concat(variables('commands')[0],variables('commands')[1],variables('commands')[2],variables('commands')[3],variables('commands')[4],variables('commands')[5],variables('commands')[6],variables('commands')[7],variables('commands')[8],variables('commands')[9], 'helm install --set serviceType=LoadBalancer,ghostHost=',reference('CreatingPublicIp').outputs.fqdn,',ghostLoadBalancerIP=',reference('CreatingPublicIp').outputs.fqdn,  ' stable/ghost;')]"
+                            ],
+                            "resources": {
+                                "requests": {
+                                    "memoryInGB": 1.5,
+                                    "cpu": 1.0
+                                }
+                            }
+                        }
+                    }
+                ],
+                "restartPolicy": "Never",
+                "osType": "Linux"
+            }
+        }
+    ]
+}
