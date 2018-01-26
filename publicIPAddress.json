@@ -35,6 +35,7 @@
             "apiVersion": "2017-05-10",
             "name": "nestedTemplate",
             "type": "Microsoft.Resources/deployments",
+            "resourceGroup": "[parameters('resourcegroupName')]",
             "properties": {
                 "mode": "Incremental",
                 "template": {
@@ -46,7 +47,6 @@
                             "type": "Microsoft.Network/publicIPAddresses",
                             "name": "[parameters('publicIpName')]",
                             "location": "[parameters('location')]",
-                            "resourceGroup": "[parameters('resourcegroupName')]",
                             "properties": {
                                 "publicIPAllocationMethod": "Static",
                                 "dnsSettings": {
