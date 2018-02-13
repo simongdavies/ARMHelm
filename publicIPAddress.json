@@ -28,7 +28,8 @@
         }
     },
     "variables": {
-        "apiversion": "2017-10-01"
+        "apiversion": "2017-10-01",
+        "createPublicIPAddressTemplateLink": "https://raw.githubusercontent.com/simongdavies/ARMHelm/master/createPublicIPAddress.json"
     },
     "resources": [
         {
@@ -38,25 +39,29 @@
             "resourceGroup": "[parameters('resourcegroupName')]",
             "properties": {
                 "mode": "Incremental",
-                "template": {
-                    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
-                    "contentVersion": "1.0.0.0",
-                    "resources": [
-                        {
-                            "apiVersion": "[variables('apiversion')]",
-                            "type": "Microsoft.Network/publicIPAddresses",
-                            "name": "[parameters('publicIpName')]",
-                            "location": "[parameters('location')]",
-                            "properties": {
-                                "publicIPAllocationMethod": "Static",
-                                "dnsSettings": {
-                                    "domainNameLabel": "[parameters('publicDnsName')]"
-                                }
-                            }
-                        }
-                    ]
+                "templateLink" :"[variables('createPublicIPAddressTemplateLink')]",
+                "parameters":{
+                    "location": {
+                        "value": "[parameters('location')]"
+                    },
+                    "publicDnsName": {
+                        "value": "[parameters('publicDnsName')]"
+                    },
+                    "publicIpName": {
+                        "value":"[parameters('publicIpName')]"
+                    }
                 }
             }
         }
-    ]
+    ],
+    "outputs": {
+        "PublicIPAddress" :{
+            "type": "string",
+            "value": "[reference('nestedTemplate').outputs.PublicIPAddress.value]"
+        },
+        "FQDN" :{
+            "type": "string",
+            "value": "[reference('nestedTemplate').outputs.FQDN.value]"
+        }
+    }
 }
