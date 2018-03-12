@@ -1,0 +1,158 @@
+{
+  "handler": "Microsoft.Compute.MultiVm",
+  "version": "0.1.2-preview",
+  "$schema": "https://schema.management.azure.com/schemas/0.1.2-preview/CreateUIDefinition.MultiVm.json#",
+  "parameters": {
+    "resourceTypes": ["Microsoft.ContainerService/managedClusters"],
+    "basics": [
+      {
+        "name": "clusterName",
+        "type": "Microsoft.Common.TextBox",
+        "label": "Kuberenetes Cluster Name",
+        "defaultValue": "kubecluster",
+        "constraints": {
+          "required": true,
+          "regex": "^[a-z0-9A-Z-]{1,15}$",
+          "validationMessage": "Only letters, numbers and dash are allowed, and the value must be 1-15 characters long."
+        }
+      }  
+    ],
+    "steps": [
+      {
+        "name": "kuberbnetesConfig",
+        "label": "Kubernetes settings",
+        "subLabel": {
+          "preValidation": "Configure the Kubernetes settings",
+          "postValidation": "Done"
+        },
+        "bladeTitle": "Kubernetes settings",
+        "elements": [
+          {
+            "name": "adminUsername",
+            "type": "Microsoft.Compute.UserNameTextBox",
+            "label": "Username",
+            "toolTip": "Admin username for the Kubernetes nodes.",
+            "osPlatform": "Linux",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "adminSSHKey",
+            "type": "Microsoft.Compute.CredentialsCombo",
+            "label": {
+              "authenticationType": "Authentication type",
+              "password": "Password",
+              "confirmPassword": "Confirm password",
+              "sshPublicKey": "SSH public key"
+            },
+            "toolTip": {
+              "authenticationType": "",
+              "password": "",
+              "sshPublicKey": "Enter the SSH PublicKey for admin user"
+            },
+            "constraints": {
+              "required": true,
+              "customPasswordRegex": "",
+              "customValidationMessage": ""
+            },
+            "options": {
+              "hideConfirmation": true,
+              "hidePassword": true
+            },
+            "osPlatform": "Linux",
+            "visible": true
+          },
+          {
+            "name": "nodeVmSize",
+            "type": "Microsoft.Compute.SizeSelector",
+            "label": "Virtual machine size",
+            "toolTip": "The size of the virtual machine for the Kubernetes nodes.",
+            "recommendedSizes": [
+              "Standard_DS2_v2",
+              "Standard_DS3_v2",
+              "Standard_DS4_v2"
+            ],
+            "constraints": {
+              "allowedSizes": [
+                "Standard_DS2_v2",
+                "Standard_DS3_v2",
+                "Standard_DS4_v2",
+                "Standard_D2s_v3",
+                "Standard_D4s_v3",
+                "Standard_D8s_v3"
+              ]
+            },
+            "osPlatform": "Linux",
+            "count": "[steps('kubernetesConfig').numberOfNodes]",
+            "visible": true
+          },
+          {
+            "name": "numberOfNodes",
+            "type": "Microsoft.Common.TextBox",
+            "label": "The number of nodes in the pool",
+            "defaultValue": "1",
+            "constraints": {
+              "required": true,
+              "regex": "^[1-9]$",
+              "validationMessage": "Only numbers are allowed, the value must be between 1 and 9"
+            }
+          }, 
+          {
+            "name": "KubeVersion",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Version of Kubernetes to Use",
+            "defaultValue": "Team Site",
+            "constraints": {
+              "required": true,
+              "allowedValues": [
+                {
+                  "label":"1.7.9",
+                  "value":"1.7.9"
+                },
+                {
+                  "label":"1.7.12",
+                  "value":"1.7.12"
+                },
+                {
+                  "label":"1.8.1",
+                  "value":"1.8.1"
+                },
+                {
+                  "label":"1.8.2",
+                  "value":"1.8.2"
+                },
+                {
+                  "label":"1.8.6",
+                  "value":"1.8.6"
+                },
+                {
+                  "label":"1.8.7",
+                  "value":"1.8.7"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "outputs": {
+      "location": "[location()]",
+      "clusterName": "[basics('clusterName')]",
+      "adminUser": "[steps('kubernetesConfig').adminUsername]",
+      "publicKey": "[steps('kubernetesConfig').adminPassword.sshPublicKey]",
+      "VMSize": "[steps('kubernetesConfig').VMSize]",
+      "nodeCount": "[coalesce(steps('sqlConfig').sqlVmSizeSSD,steps('sqlConfig').sqlVmSizeHDD)]",
+      "keubernetesVersion": "[coalesce(steps('sqlConfig').sqlServerServiceAccountPassword.password,steps('kubernetesConfig').adminPassword.password)]",
+      "spDNSPrefix": "[steps('spConfig').spDnsAndPublicIP.domainNameLabel]",
+      "sppublicIPAddressName": "[steps('spConfig').spDnsAndPublicIP.name]",
+      "spVMSize": "[coalesce(steps('spConfig').spVmSizeSSD,steps('spConfig').spVmSizeHDD,steps('sqlConfig').sqlVmSizeSSD,steps('sqlConfig').sqlVmSizeHDD)]",
+      "sharePointSetupUserAccountPassword": "[coalesce(steps('spConfig').spSetupUserAccountPassword.password,steps('kubernetesConfig').adminPassword.password)]",
+      "sharePointFarmAccountPassword": "[coalesce(steps('spConfig').spServerFarmAccountPassword.password,steps('kubernetesConfig').adminPassword.password)]",
+      "sharePointFarmPassphrasePassword": "[coalesce(steps('spConfig').spServerFarmPassphrase.password,steps('kubernetesConfig').adminPassword.password)]",
+      "spSiteTemplateName": "[steps('spConfig').spSiteTemplateName]",
+      "enableBackup": "[steps('kubernetesConfig').backup]",
+      "useManagedDisk": "[steps('kubernetesConfig').useManagedDisk]"
+    }
+  }
+}

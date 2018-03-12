@@ -33,35 +33,20 @@
                 "1.8.2",
                 "1.8.6"
             ]
+        },
+        "ghostusername": {
+            "type": "string"
+        },
+        "ghostpassword": {
+            "type": "securestring"
+        },
+        "ghostblogtitle": {
+            "type": "string"
         }
     },
     "variables": {
         "aksRG":"[concat('MC_',resourceGroup().name,'_',parameters('clusterName'),'_',replace(parameters('location'),' ', ''))]",
         "ipName":"[concat('ghost-',uniquestring(deployment().Name))]",
-        "commands": [
-            "[concat('az login --service-principal -u ',parameters('clientid') , ' -p ', parameters('secret'), ' --tenant ', subscription().tenantId,';')]",
-            "az aks install-cli;",
-            "[concat('az aks get-credentials --resource-group  ',resourceGroup().name , ' --name ', parameters('clusterName'),';')]",
-            "kubectl get nodes;",
-            "apk update;",
-            "apk add curl;",
-            "curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get > get_helm.sh;",
-            "chmod 700 get_helm.sh;",
-            "./get_helm.sh;",
-            "[concat('IP=`az network public-ip show --resource-group ', variables('aksRG'),'  --name ', variables('ipName'),'  --query ipAddress`;')]",
-            "echo \"IP is $IP\";",
-            "[concat('DNS=`az network public-ip show --resource-group ', variables('aksRG'),'  --name ', variables('ipName'),'  --query dnsSettings.fqdn`;')]",
-            "echo \"DNS is $DNS\";",
-            "helm init --upgrade;",
-            "kubectl rollout status -w deployment/tiller-deploy --namespace=kube-system;",
-            "helm install --set serviceType=LoadBalancer,ghostHost=$DNS,ghostLoadBalancerIP=$IP stable/ghost;",
-            "helm status stable/ghost;"
-        ],
-        "command":[
-            "bin/bash",
-            "-c",
-            "[concat(variables('commands')[0],variables('commands')[1],variables('commands')[2],variables('commands')[3],variables('commands')[4],variables('commands')[5],variables('commands')[6],variables('commands')[7],variables('commands')[8],variables('commands')[9],variables('commands')[10],variables('commands')[11],variables('commands')[12],variables('commands')[13],variables('commands')[14],variables('commands')[15],variables('commands')[16])]"
-        ],
         "ipAddressTemplateLink": "https://raw.githubusercontent.com/simongdavies/ARMHelm/master/publicIPAddress.json",
         "resourceGroupTemplateLink": "https://raw.githubusercontent.com/simongdavies/ARMHelm/master/resourceGroupName.json"
     },
@@ -78,7 +63,7 @@
                     {
                         "name": "nodepool1",
                         "count": "[parameters('nodeCount')]",
-                        "vmSize": "Standard_D1_v2",
+                        "vmSize": "Standard_DS2_v2",
                         "dnsPrefix": "[concat(parameters('clusterName'),uniquestring(deployment().Name))]",
                         "storageProfile": "ManagedDisks",
                         "osType": "Linux"
@@ -149,7 +134,7 @@
         {
             "location": "[parameters('location')]",
             "type": "Microsoft.ContainerInstance/containerGroups",
-            "name": "acitest",
+            "name": "[concat('aci-',uniquestring(deployment().Name))]",
             "apiVersion": "2017-10-01-preview",
             "dependsOn": [
                 "CreatingPublicIp",
@@ -158,10 +143,63 @@
             "properties": {
                 "containers": [
                     {
-                        "name": "acitest",
+                        "name": "script",
                         "properties": {
-                            "image": "microsoft/azure-cli",
-                            "command": "[variables('command')]",
+                            "image": "sdacr.azurecr.io/sdcloudshell",
+                            "environmentVariables": [
+                                {
+                                  "name": "app",
+                                  "value": "ghost"
+                                },
+                                {
+                                    "name": "aztenant",
+                                    "value": "[subscription().tenantId]"
+                                },
+                                {
+                                    "name": "azprincipal",
+                                    "value": "[parameters('clientId')]"
+                                },
+                                {
+                                    "name": "azsecret",
+                                    "value": "[parameters('secret')]"
+                                },
+                                {
+                                    "name": "azsubscription",
+                                    "value": "[subscription().id]"
+                                },
+                                {
+                                    "name": "aksresourcegroup",
+                                    "value": "[variables('aksRG')]"
+                                },
+                                {
+                                    "name": "resourcegroup",
+                                    "value": "[resourceGroup().Name]"
+                                },
+                                {
+                                    "name": "clustername",
+                                    "value": "[parameters('clusterName')]"
+                                },
+                                {
+                                    "name": "ipname",
+                                    "value": "[variables('ipName')]"
+                                },
+                                {
+                                    "name": "ghostusername",
+                                    "value": "[parameters('ghostusername')]"
+                                },
+                                {
+                                    "name": "ghostpassword",
+                                    "value": "[parameters('ghostpassword')]"
+                                },
+                                {
+                                    "name": "ghostblogtitle",
+                                    "value": "[parameters('ghostblogtitle')]"
+                                },
+                                {
+                                    "name": "location",
+                                    "value": "[parameters('location')]"
+                                }
+                              ],
                             "resources": {
                                 "requests": {
                                     "memoryInGB": 1.5,
@@ -171,9 +209,26 @@
                         }
                     }
                 ],
+                "imageRegistryCredentials": [
+                    {
+                        "server": "sdacr.azurecr.io",
+                        "username": "[parameters('clientId')]",
+                        "password": "[parameters('secret')]"
+                    }
+                ],
                 "restartPolicy": "Never",
                 "osType": "Linux"
             }
         }
-    ]
+    ],
+    "outputs": {
+        "PublicIPAddress" :{
+            "type": "string",
+            "value": "[reference('CreatingPublicIp').outputs.PublicIPAddress.value]"
+        },
+        "FQDN" :{
+            "type": "string",
+            "value": "[reference('CreatingPublicIp').outputs.FQDN.value]"
+        }
+    }
 }

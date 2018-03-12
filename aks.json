@@ -27,6 +27,7 @@
         "kubernetesVersion": {
             "type": "string",
             "allowedValues": [
+                "1.7.7",
                 "1.7.12",
                 "1.8.1",
                 "1.7.9",
@@ -37,31 +38,7 @@
     },
     "variables": {
         "aksRG":"[concat('MC_',resourceGroup().name,'_',parameters('clusterName'),'_',replace(parameters('location'),' ', ''))]",
-        "ipName":"[concat('ghost-',uniquestring(deployment().Name))]",
-        "commands": [
-            "[concat('az login --service-principal -u ',parameters('clientid') , ' -p ', parameters('secret'), ' --tenant ', subscription().tenantId,';')]",
-            "az aks install-cli;",
-            "[concat('az aks get-credentials --resource-group  ',resourceGroup().name , ' --name ', parameters('clusterName'),';')]",
-            "kubectl get nodes;",
-            "apk update;",
-            "apk add curl;",
-            "curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get > get_helm.sh;",
-            "chmod 700 get_helm.sh;",
-            "./get_helm.sh;",
-            "[concat('IP=`az network public-ip show --resource-group ', variables('aksRG'),'  --name ', variables('ipName'),'  --query ipAddress`;')]",
-            "echo \"IP is $IP\";",
-            "[concat('DNS=`az network public-ip show --resource-group ', variables('aksRG'),'  --name ', variables('ipName'),'  --query dnsSettings.fqdn`;')]",
-            "echo \"DNS is $DNS\";",
-            "helm init --upgrade;",
-            "kubectl rollout status -w deployment/tiller-deploy --namespace=kube-system;",
-            "helm install --set serviceType=LoadBalancer,ghostHost=$DNS,ghostLoadBalancerIP=$IP stable/ghost;",
-            "helm status stable/ghost;"
-        ],
-        "command":[
-            "bin/bash",
-            "-c",
-            "[concat(variables('commands')[0],variables('commands')[1],variables('commands')[2],variables('commands')[3],variables('commands')[4],variables('commands')[5],variables('commands')[6],variables('commands')[7],variables('commands')[8],variables('commands')[9],variables('commands')[10],variables('commands')[11],variables('commands')[12],variables('commands')[13],variables('commands')[14],variables('commands')[15],variables('commands')[16])]"
-        ],
+        "ipName":"[concat('aks-',resourceGroup().name,'-',parameters('clusterName'))]",
         "ipAddressTemplateLink": "https://raw.githubusercontent.com/simongdavies/ARMHelm/master/publicIPAddress.json",
         "resourceGroupTemplateLink": "https://raw.githubusercontent.com/simongdavies/ARMHelm/master/resourceGroupName.json"
     },
@@ -135,7 +112,7 @@
                         "value": "[parameters('location')]"
                     },
                     "publicDnsName": {
-                        "value": "[concat('ghost',uniquestring(deployment().Name))]"
+                        "value": "[concat('aks',uniquestring(deployment().Name))]"
                     },
                     "publicIpName": {
                         "value": "[variables('ipName')]"
@@ -144,35 +121,6 @@
                         "value":"[reference('GetResourceGroupName').outputs.name.value]"
                     }
                 }
-            }
-        },
-        {
-            "location": "[parameters('location')]",
-            "type": "Microsoft.ContainerInstance/containerGroups",
-            "name": "acitest",
-            "apiVersion": "2017-10-01-preview",
-            "dependsOn": [
-                "CreatingPublicIp",
-                "[parameters('clusterName')]"
-            ],
-            "properties": {
-                "containers": [
-                    {
-                        "name": "acitest",
-                        "properties": {
-                            "image": "microsoft/azure-cli",
-                            "command": "[variables('command')]",
-                            "resources": {
-                                "requests": {
-                                    "memoryInGB": 1.5,
-                                    "cpu": 1.0
-                                }
-                            }
-                        }
-                    }
-                ],
-                "restartPolicy": "Never",
-                "osType": "Linux"
             }
         }
     ]
